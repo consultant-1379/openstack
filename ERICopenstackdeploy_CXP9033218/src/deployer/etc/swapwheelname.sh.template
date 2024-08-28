@@ -1,0 +1,5 @@
+#!/bin/bash
+
+mkdir ${project.build.directory}/openstack-deployer-package/
+
+mv ${project.build.directory}/*.whl ${project.build.directory}/openstack-deployer-package/${project.artifactId}-${project.version}-py2.py3-none-any.whl

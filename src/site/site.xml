@@ -1,0 +1,55 @@
+<?xml version="1.0"?>
+<project xmlns="http://maven.apache.org/DECORATION/1.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/DECORATION/1.0.0 http://maven.apache.org/xsd/decoration-1.0.0.xsd">
+  <bannerLeft>
+    <name>Openstack Deployer Documentation</name>
+  </bannerLeft>
+  <bannerRight>
+    <src>images/ericsson_logo.svg</src>
+  </bannerRight>
+  <version position="none"/>
+  <publishDate position="right"/>
+  <body>
+    <menu name="Getting Started">
+      <item name="Introduction" href="index.html"/>
+      <item name="Installation" href="installation.html"/>
+      <item name="General Usage" href="general_usage.html"/>
+      <item name="enm media information" href="enm_media_information.html"/>
+    </menu>
+    <menu name="Available Commands">
+      <item name="ci edp venm" href="ci_edp_venm.html"/>
+      <item name="ci enm rollout" href="ci_enm_rollout.html"/>
+      <item name="ci enm snapshot deployment" href="ci_enm_snapshot_deployment.html"/>
+      <item name="ci enm upgrade" href="ci_enm_upgrade.html"/>
+      <item name="ci enm rollback deployment" href="ci_enm_rollback_deployment.html"/>
+      <item name="ci enm stacks delete" href="ci_enm_stacks_delete.html"/>
+      <item name="ci enm backup deployment" href="ci_enm_backup_deployment.html"/>
+      <item name="ci enm restore deployment" href="ci_enm_restore_deployment.html"/>
+      <item name="ci enm schema upgrade" href="ci_enm_schema_upgrade.html"/>
+      <item name="ci task" href="ci_task.html"/>
+      <item name="glance clean" href="glance_clean.html"/>
+      <item name="nwci edp venm" href="nwci_edp_venm.html"/>
+      <item name="nwci enm rollout" href="nwci_enm_rollout.html"/>
+      <item name="nwci enm snapshot deployment" href="nwci_enm_snapshot_deployment.html"/>
+      <item name="nwci enm upgrade" href="nwci_enm_upgrade.html"/>
+      <item name="nwci enm rollback deployment" href="nwci_enm_rollback_deployment.html"/>
+      <item name="nwci enm stacks delete" href="nwci_enm_stacks_delete.html"/>
+      <item name="nwci task" href="nwci_task.html"/>
+      <item name="ci vio dvms deploy" href="ci_vio_dvms_deploy.html"/>
+      <item name="ci vio platform install" href="ci_vio_platform_install.html"/>
+      <item name="ci vio platform upgrade" href="ci_vio_platform_upgrade.html"/>
+      <item name="ci vio platform post install" href="ci_vio_platform_post_install.html"/>
+      <item name="ci vio platform post upgrade" href="ci_vio_platform_post_upgrade.html"/>
+    </menu>
+    <menu name="Change Log">
+      <item name="Change Log" href="changelog.html"/>
+    </menu>
+    <menu name="Support">
+      <item name="Support" href="https://confluence-nam.lmera.ericsson.se/display/CIE/DE+Support/"/>
+    </menu>
+  </body>
+  <skin>
+    <groupId>com.ericsson.cds</groupId>
+    <artifactId>ericsson-skin-stats</artifactId>
+    <version>1.1.0</version>
+  </skin>
+</project>

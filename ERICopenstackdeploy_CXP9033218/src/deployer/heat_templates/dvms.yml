@@ -1,0 +1,262 @@
+description: dvms template
+heat_template_version: 2015-04-30
+parameters:
+  dvms_ip_vio_mgt:
+    type: string
+  external_netmask:
+    type: string
+  dvms_external_network_name:
+    type: string
+  external_mtu:
+    type: string
+  external_gateway:
+    type: string
+  dns_domainName:
+    type: string
+  nameserverA:
+    type: string
+  nameserverB:
+    type: string
+  ntp_external_servers:
+    type: string
+  timezone:
+    type: string
+  dvms_image_name:
+    type: string
+  dvms_password:
+    type: string
+  openstack_flavor:
+    type: string
+  deployment_id:
+    type: string
+resources:
+  random_string:
+    properties:
+      length: 5
+    type: OS::Heat::RandomString
+  dvms_security_group:
+    properties:
+      name: {list_join: ['-', [get_param: deployment_id, 'security-group-dvms', get_resource: random_string]]}
+      rules:
+        - ethertype: IPv6
+          direction: egress
+        - ethertype: IPv4
+          direction: egress
+        - protocol: icmp
+          ethertype: IPv4
+        - protocol: icmp
+          direction: egress
+          ethertype: IPv4
+        - protocol: tcp
+          port_range_min: 1
+          port_range_max: 65535
+          ethertype: IPv4
+        - protocol: tcp
+          port_range_min: 1
+          port_range_max: 65535
+          direction: egress
+          ethertype: IPv4
+        - protocol: tcp
+          port_range_min: 22
+          port_range_max: 22
+          ethertype: IPv4
+        - protocol: udp
+          port_range_min: 1
+          port_range_max: 65535
+          direction: egress
+          ethertype: IPv4
+    type: OS::Neutron::SecurityGroup
+  interface1_port:
+    properties:
+      fixed_ips: [ip_address: {get_param: dvms_ip_vio_mgt}]
+      network: {get_param: dvms_external_network_name}
+      security_groups: [{get_resource: dvms_security_group}]
+    type: OS::Neutron::Port
+  user_data:
+    properties:
+      parts:
+      - config:
+          str_replace:
+            params:
+              _PASSWD_: {get_param: dvms_password}
+            template: |
+              #cloud-config
+              merge_how: 'list(append)+dict(recurse_array,no_replace)+str()'
+              output: { all: "| tee -a /var/log/cloud-init-output.log" }
+              ssh_pwauth: true
+              disable_root: true
+              chpasswd:
+                list: |
+                  root:_PASSWD_
+                expire: false
+      - config:
+          str_replace:
+            params:
+              _IPADDR_: {get_param: dvms_ip_vio_mgt}
+              _NETMASK_: {get_param: external_netmask}
+              _GATEWAY_: {get_param: external_gateway}
+              _MTU_: {get_param: external_mtu}
+            template: |
+              #cloud-config
+              merge_how: 'list(append)+dict(recurse_array,no_replace)+str()'
+              write_files:
+                - path: /run/cloud-init/run.sh
+                  owner: root:root
+                  permissions: '0700'
+                  content : |
+                    #!/bin/bash
+                    run() {
+                      $@
+                      if (( $? == 0 )); then
+                        echo "Command executed successfully: $@"
+                      else
+                        echo "Command failed: $@"
+                        exit 1
+                      fi
+                    }
+
+                - path: /etc/sysconfig/network-scripts/ifcfg-eth0
+                  owner: root:root
+                  permissions: '0644'
+                  content : |
+                    NAME=eth0
+                    DEVICE=eth0
+                    TYPE=Ethernet
+                    BOOTPROTO=static
+                    IPADDR=_IPADDR_
+                    GATEWAY=_GATEWAY_
+                    NETMASK=_NETMASK_
+                    ONBOOT=yes
+                    MTU=_MTU_
+              runcmd:
+                - source /run/cloud-init/run.sh
+                - echo "Configure ifcfg-eth0"
+                - run rm -f /etc/sysconfig/network-scripts/ifcfg-eth{1,2}
+                - echo "Remove bridge interface"
+                - run virsh net-destroy default
+                - echo "Restart network.serivce"
+                - run systemctl restart network
+      - config: |
+          #cloud-config
+          merge_how: 'list(append)+dict(recurse_array,no_replace)+str()'
+          write_files:
+            - path: /run/cloud-init/set_hostname.sh
+              owner: root:root
+              permissions: '0700'
+              content : |
+                #!/bin/bash
+                source /run/cloud-init/run.sh
+                myhostname=$(uname -n | cut -d'.' -f1)
+                run hostnamectl set-hostname ${myhostname}
+          runcmd:
+            - echo "Set hostname"
+            - run /run/cloud-init/set_hostname.sh
+      - config:
+          str_replace:
+            params:
+              _DOMAIN_NAME_: {get_param: dns_domainName}
+              _NAMESERVERA_: {get_param: nameserverA}
+              _NAMESERVERB_: {get_param: nameserverB}
+            template: |
+              #cloud-config
+              merge_how: 'list(append)+dict(recurse_array,no_replace)+str()'
+              write_files:
+                - path: /etc/resolv.conf
+                  owner: root:root
+                  permissions: '0644'
+                  content : |
+                    search _DOMAIN_NAME_
+                    nameserver _NAMESERVERA_
+                    nameserver _NAMESERVERB_
+      - config:
+          str_replace:
+            params:
+              _NTP_EXTERNAL_SERVERS_: {get_param: ntp_external_servers}
+            template: |
+              #cloud-config
+              merge_how: 'list(append)+dict(recurse_array,no_replace)+str()'
+              write_files:
+                - path: /etc/ntp.conf
+                  owner: root:root
+                  permissions: '0644'
+                  content : |
+                    # drift file
+                    driftfile /var/lib/ntp/drift
+                    # Permit time synchronization with our time source, but do not
+                    # permit the source to query or modify the service on this system.
+                    restrict default kod nomodify notrap nopeer noquery
+                    restrict -6 default kod nomodify notrap nopeer noquery
+                    # Permit all access over the loopback interface.  This could
+                    # be tightened as well, but to do so would effect some of
+                    # the administrative functions.
+                    restrict 127.0.0.1
+                    restrict -6 ::1
+                    # NTP servers
+
+                - path: /run/cloud-init/ntp_config.sh
+                  owner: root:root
+                  permissions: '0700'
+                  content : |
+                    #!/bin/bash
+                    ntp_external_servers=$1
+                    export IFS=","
+                    for serv in $ntp_external_servers; do
+                      echo "server $serv" >> /etc/ntp.conf
+                    done
+              runcmd:
+                - echo "Configure NTP servers"
+                - run /run/cloud-init/ntp_config.sh _NTP_EXTERNAL_SERVERS_
+                - run systemctl restart ntpd
+                - run systemctl enable ntpd
+                - run systemctl restart crond
+      - config:
+          str_replace:
+            params:
+              _TIMEZONE_: {get_param: timezone}
+            template: |
+              #cloud-config
+              merge_how: 'list(append)+dict(recurse_array,no_replace)+str()'
+              timezone: _TIMEZONE_
+      - config: |
+          #cloud-config
+          merge_how: 'list(append)+dict(recurse_array,no_replace)+str()'
+          runcmd:
+            - echo "Reload systemctl daemon"
+            - run systemctl daemon-reload
+            - echo "Start httpd service"
+            - run systemctl start httpd
+            - run systemctl enable httpd
+            - run systemctl status httpd
+      - config: |
+          #cloud-config
+          merge_how: 'list(append)+dict(recurse_array,no_replace)+str()'
+          write_files:
+            - path: /run/cloud-init/set_firewalld.sh
+              owner: root:root
+              permissions: '0700'
+              content : |
+                #!/bin/bash
+                source /run/cloud-init/run.sh
+                run setenforce 0
+                run systemctl start firewalld
+                run systemctl enable firewalld
+                run systemctl status firewalld
+                run firewall-cmd --add-service=http --add-service=https --permanent
+                run firewall-cmd --reload
+                run setenforce 1
+                run restorecon -R /etc
+          runcmd:
+            - echo "Configure firewalld & restore selinux context"
+            - run /run/cloud-init/set_firewalld.sh
+            - echo "User configuration finished"
+    type: OS::Heat::MultipartMime
+  dvms_definition_vm:
+    properties:
+      config_drive: true
+      name: {list_join: ['-', [get_param: deployment_id, 'dvms']]}
+      flavor: {get_param: openstack_flavor}
+      image: {get_param: dvms_image_name}
+      networks: [port: {get_resource: interface1_port}]
+      user_data: {get_resource: user_data}
+      user_data_format: RAW
+    type: OS::Nova::Server

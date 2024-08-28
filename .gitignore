@@ -1,0 +1,5 @@
+# PyCharm Project Directory
+.idea/
+
+# mvn target directories
+target/

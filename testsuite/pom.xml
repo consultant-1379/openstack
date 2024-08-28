@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>com.ericsson.de</groupId>
+  <artifactId>testsuite</artifactId>
+  <name>Openstack Deployer Tests</name>
+  <parent>
+    <groupId>com.ericsson.de</groupId>
+    <artifactId>openstack</artifactId>
+    <version>23.0.4-SNAPSHOT</version>
+  </parent>
+  <properties>
+    <test_python_dependencies_directory>${project.build.directory}/test_python_dependencies/</test_python_dependencies_directory>
+    <code_style_branch_compare>origin/master</code_style_branch_compare>
+    <maven.site.skip>true</maven.site.skip>
+    <maven.site.deploy.skip>true</maven.site.deploy.skip>
+    <maven.exec.skip>true</maven.exec.skip>
+  </properties>
+  <profiles>
+    <profile>
+      <id>release</id>
+      <!-- Do not run checks in the release profile-->
+    </profile>
+    <profile>
+      <id>default</id>
+      <activation>
+        <activeByDefault>true</activeByDefault>
+      </activation>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.codehaus.mojo</groupId>
+            <artifactId>exec-maven-plugin</artifactId>
+            <version>1.5.0</version>
+            <executions>
+              <execution>
+                <id>The Build Of The Docker Compose</id>
+                <phase>test</phase>
+                <goals>
+                  <goal>exec</goal>
+                </goals>
+                <configuration>
+                  <executable>docker-compose</executable>
+                  <arguments>
+                    <argument>build</argument>
+                  </arguments>
+                </configuration>
+              </execution>
+              <execution>
+                <id>Run The Code Style Tests</id>
+                <phase>test</phase>
+                <goals>
+                  <goal>exec</goal>
+                </goals>
+                <configuration>
+                  <executable>docker-compose</executable>
+                  <arguments>
+                    <argument>run</argument>
+                    <argument>--rm</argument>
+                    <argument>gateway</argument>
+                    <argument>/mountedpath/testsuite/code_style_checks.sh</argument>
+                    <argument>${code_style_branch_compare}</argument>
+                  </arguments>
+                </configuration>
+              </execution>
+            </executions>
+            <configuration>
+              <skip>${maven.exec.skip}</skip>
+              <workingDirectory>${project.build.directory}</workingDirectory>
+            </configuration>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
+</project>
